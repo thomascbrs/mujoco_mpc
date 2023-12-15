@@ -17,7 +17,11 @@
 # Exclude temporary folders
 *.egg-info/
 build/
+build_debug/
 build_cmake/
+# Exclude CMake Cache
+CMakeCache.txt
+CMakeFiles/cmake.check_cache
 # Exclude macOS folder attributes
 .DS_Store
 # Exclude macOS Info.framework.plist
