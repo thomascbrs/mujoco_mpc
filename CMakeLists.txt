@@ -19,6 +19,10 @@ set(CMAKE_POLICY_DEFAULT_CMP0069 NEW)
 # Default to GLVND if available.
 set(CMAKE_POLICY_DEFAULT_CMP0072 NEW)
 
+# Setup debug compilation options.
+# set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O2 -g -DNDEBUG") # Optimisation
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g -DNDEBUG") # No optimisation
+
 # This line has to appear before 'PROJECT' in order to be able to disable incremental linking
 set(MSVC_INCREMENTAL_DEFAULT ON)
 
