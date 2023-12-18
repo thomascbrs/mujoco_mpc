@@ -48,6 +48,24 @@ target_compile_definitions(load PUBLIC MJSTATIC)
 target_link_libraries(load PUBLIC mujoco::mujoco absl::core_headers absl::strings)
 target_include_directories(load PRIVATE ${mujoco_SOURCE_DIR}/include gmock)
 
+add_library(libload STATIC load.h load.cc)
+target_include_directories(libload PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../..)
+target_compile_definitions(libload PUBLIC MJSTATIC)
+target_link_libraries(libload PUBLIC mujoco::mujoco absl::core_headers absl::strings)
+target_include_directories(libload PRIVATE ${mujoco_SOURCE_DIR}/include gmock)
+
+target_include_directories(libload
+  INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/..>
+)
+
+install(TARGETS
+libload
+  EXPORT libload_targets
+  ARCHIVE DESTINATION lib
+)
+
 # LQR
 add_library(lqr STATIC lqr.h lqr.cc)
 target_include_directories(lqr PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../..)

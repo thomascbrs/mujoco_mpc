@@ -160,6 +160,7 @@ target_compile_options(libmjpc PUBLIC ${MJPC_COMPILE_OPTIONS})
 target_compile_definitions(libmjpc PRIVATE MJSIMULATE_STATIC)
 target_link_libraries(
   libmjpc
+  PUBLIC
   absl::any_invocable
   absl::check
   absl::flat_hash_map
@@ -178,40 +179,85 @@ target_include_directories(libmjpc
   ${CMAKE_CURRENT_SOURCE_DIR}/..
   ${CMAKE_CURRENT_BINARY_DIR}/..
 )
-
-add_executable(
-  mjpc
-  main.cc
+target_include_directories(libmjpc
+  INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/..>
 )
-target_link_libraries(
-  mjpc
-  absl::flags
-  absl::flags_parse
-  absl::random_random
-  absl::strings
-  agent_state_proto_lib
-  libmjpc
-  mujoco::mujoco
-  ${_PROTOBUF_LIBPROTOBUF}
-  threadpool
-  Threads::Threads
-)
-target_include_directories(mjpc PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
-target_compile_options(mjpc PUBLIC ${MJPC_COMPILE_OPTIONS})
-target_link_options(mjpc PRIVATE ${MJPC_LINK_OPTIONS})
-target_compile_definitions(mjpc PRIVATE MJSIMULATE_STATIC)
-if(APPLE)
-  target_sources(mjpc PRIVATE macos_gui.mm)
-  target_link_libraries(mjpc "-framework Cocoa")
-endif()
 
-add_subdirectory(tasks)
 
-if(BUILD_TESTING AND MJPC_BUILD_TESTS)
-  enable_testing()
-  add_subdirectory(test)
+
+message("CMAKE_BUILD_TYPE : ${CMAKE_BUILD_TYPE}")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message("Building in Debug mode")
+    # Add Debug-specific configurations or settings here
+else()
+    message("Building in a non-Debug mode")
+    # Add configurations for other build types (e.g., Release, RelWithDebInfo, MinSizeRel) here
+    add_executable(
+      mjpc
+      main.cc
+    )
+    target_link_libraries(
+      mjpc
+      absl::flags
+      absl::flags_parse
+      absl::random_random
+      absl::strings
+      agent_state_proto_lib
+      libmjpc
+      mujoco::mujoco
+      ${_PROTOBUF_LIBPROTOBUF}
+      threadpool
+      Threads::Threads
+    )
+    target_include_directories(mjpc PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
+    target_compile_options(mjpc PUBLIC ${MJPC_COMPILE_OPTIONS})
+    target_link_options(mjpc PRIVATE ${MJPC_LINK_OPTIONS})
+    target_compile_definitions(mjpc PRIVATE MJSIMULATE_STATIC)
+    if(APPLE)
+      target_sources(mjpc PRIVATE macos_gui.mm)
+      target_link_libraries(mjpc "-framework Cocoa")
+    endif()
+
+    add_subdirectory(tasks)
+
+    if(BUILD_TESTING AND MJPC_BUILD_TESTS)
+      enable_testing()
+      add_subdirectory(test)
+    endif()
 endif()
 
 if(MJPC_BUILD_GRPC_SERVICE)
   add_subdirectory(grpc)
 endif()
+
+# Install the library as to reuse it for another project.
+install(TARGETS
+  libmjpc
+  agent_state_proto_lib
+  glfw
+  lodepng
+  # mujoco::platform_ui_adapter
+  ${_PROTOBUF_LIBPROTOBUF}
+  threadpool
+  EXPORT libmjpc_targets
+  ARCHIVE DESTINATION lib
+)
+
+# Specify where to install the header files
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    DESTINATION include/libmjpc
+    FILES_MATCHING PATTERN "*.h"
+)
+
+# In order to keep a clean copy of headers in the build directory
+# without installing the repository during development mode.
+# Copy headers to the build directory during build.
+add_custom_command(
+    TARGET libmjpc
+    PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_BINARY_DIR}/include/libmjpc/mjpc
+)
