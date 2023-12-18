@@ -11,6 +11,42 @@
   </a>
 </p>
 
+**Compilation**
+Ubuntu 20.04.
+
+- Debug mode
+Can only build the library .so. Debug mode does not work for executable. Error linking mujoco, undefined reference to `__muloti4'. Compilation problem with clang12 probably.
+
+```
+mkdir build_debug && cd build_debug && cmake -DCMAKE_BUILD_TYPE=Debug -DMJPC_BUILD_GRPC_SERVICE=ON ..
+```
+
+Modify C and CXX compiler to clang12.
+In my case, using ccmake .. then configure, and setting the following variables :
+```
+CMAKE_CXX_COMPILER=/usr/bin/clang++-12
+CMAKE_C_COMPILER=/usr/bin/clang-12
+```
+Build the library.
+```
+cmake --build . --target libmjpc -j4
+```
+
+- Release mode
+```
+mkdir build_debug && cd build_debug && cmake -DCMAKE_BUILD_TYPE=Debug -DMJPC_BUILD_GRPC_SERVICE=ON ..
+```
+Modify .c and .cpp compiler to clang12.
+In my case, using ccmake .., then configure, and setting the following variables :
+```
+CMAKE_CXX_COMPILER=/usr/bin/clang++-12
+CMAKE_C_COMPILER=/usr/bin/clang-12
+```
+Build the library and the executable.
+```
+cmake --build . --target mjpc agent_test cost_derivatives_test norm_test rollout_test threadpool_test trajectory_test utilities_test direct_force_test direct_optimize_test direct_parameter_test direct_sensor_test direct_trajectory_test direct_utilities_test batch_filter_test batch_prior_test kalman_test unscented_test
+```
+
 **MuJoCo MPC (MJPC)** is an interactive application and software framework for
 real-time predictive control with [MuJoCo](https://mujoco.org/), developed by
 Google DeepMind.
