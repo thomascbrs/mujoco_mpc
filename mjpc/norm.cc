@@ -42,6 +42,8 @@ int NormParameterDimension(int type) {
       return 2;
     case NormType::kRectifyLoss:
       return 1;
+    case NormType::kExpoL2:
+      return 1;
   }
   return 0;
 }
@@ -198,6 +200,43 @@ double Norm(double* g, double* H, const double* x, const double* params, int n,
           y += x[i] > 0 ? x[i] : 0;
           if (g) g[i] = x[i] > 0 ? 1 : 0;
           if (H) H[i * n + i] = 0;
+        }
+      }
+      break;
+    }
+
+    case NormType::kExpoL2: {
+      double gamma = params[0];
+      for (int i = 0; i < 4; i++) {
+        double s = mju_exp(-gamma * x[3*i+2]);
+        double v = x[3*i] * x[3*i] + x[3*i+1] * x[3*i+1];
+        y += s * v;
+      }
+
+      if (g) {  // x
+        for (int i = 0; i < 4; i++) {
+          double s = mju_exp(-gamma * x[3*i+2]);
+          double v = x[3*i] * x[3*i] + x[3*i+1] * x[3*i+1];
+          g[3*i] = 2*x[3*i] * s;
+          g[3*i+1] = 2*x[3*i+1] * s;
+          g[3*i+2] = -gamma * s * v;
+        }
+      }
+      if (H) {  // eye(n)
+        for (int i = 0; i < 4; i++) {
+          double s = mju_exp(-gamma * x[3*i+2]);
+          double v = x[3*i] * x[3*i] + x[3*i+1] * x[3*i+1];
+          H[(3 * i + 0) * n + 3 * i + 0] = 2 * s;
+          H[(3 * i + 0) * n + 3 * i + 1] = 0.;
+          H[(3 * i + 0) * n + 3 * i + 2] = - 2. * x[3*i] * gamma * s;
+
+          H[(3 * i + 1) * n + 3 * i + 0] = 0.;
+          H[(3 * i + 1) * n + 3 * i + 1] = 2 * s;
+          H[(3 * i + 1) * n + 3 * i + 2] = - 2. * x[3*i + 1] * gamma * s;
+
+          H[(3 * i + 2) * n + 3 * i + 0] = - 2. * x[3*i] * gamma * s;
+          H[(3 * i + 2) * n + 3 * i + 1] = - 2. * x[3*i + 1] * gamma * s;
+          H[(3 * i + 2) * n + 3 * i + 2] = gamma * gamma * s * v;
         }
       }
       break;
