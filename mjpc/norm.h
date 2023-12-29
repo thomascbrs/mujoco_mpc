@@ -33,6 +33,7 @@ enum NormType : int {
   kSmoothAbs2Loss = 7,
   kRectifyLoss = 8,
   kExpoL2 = 9,
+  kSigmoidL2 = 10,
 };
 
 // norm's number of parameters
