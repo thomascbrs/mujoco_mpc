@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 
 #include <mujoco/mujoco.h>
 
@@ -43,9 +44,9 @@ int NormParameterDimension(int type) {
     case NormType::kRectifyLoss:
       return 1;
     case NormType::kExpoL2:
-      return 1;
+      return 3;
     case NormType::kSigmoidL2:
-      return 1;
+      return 3;
   }
   return 0;
 }
@@ -209,36 +210,43 @@ double Norm(double* g, double* H, const double* x, const double* params, int n,
 
     case NormType::kExpoL2: {
       double gamma = params[0];
+      double front_factor = params[1];
+      double back_factor = params[2];
+      double factor = front_factor;
+      // Order of the legs based on the residual : FR-FL-RR-RL.
       for (int i = 0; i < 4; i++) {
+        factor = (i < 2) ? front_factor : back_factor;
         double s = mju_exp(-gamma * x[3*i+2]);
         double v = x[3*i] * x[3*i] + x[3*i+1] * x[3*i+1];
-        y += s * v;
+        y += factor * s * v;
       }
 
       if (g) {  // x
         for (int i = 0; i < 4; i++) {
+          factor = (i < 2) ? front_factor : back_factor;
           double s = mju_exp(-gamma * x[3*i+2]);
           double v = x[3*i] * x[3*i] + x[3*i+1] * x[3*i+1];
-          g[3*i] = 2*x[3*i] * s;
-          g[3*i+1] = 2*x[3*i+1] * s;
-          g[3*i+2] = -gamma * s * v;
+          g[3*i] = factor * 2*x[3*i] * s;
+          g[3*i+1] = factor * 2*x[3*i+1] * s;
+          g[3*i+2] = - factor * gamma * s * v;
         }
       }
       if (H) {  // eye(n)
         for (int i = 0; i < 4; i++) {
+          factor = (i < 2) ? front_factor : back_factor;
           double s = mju_exp(-gamma * x[3*i+2]);
           double v = x[3*i] * x[3*i] + x[3*i+1] * x[3*i+1];
-          H[(3 * i + 0) * n + 3 * i + 0] = 2 * s;
+          H[(3 * i + 0) * n + 3 * i + 0] = factor * 2 * s;
           H[(3 * i + 0) * n + 3 * i + 1] = 0.;
-          H[(3 * i + 0) * n + 3 * i + 2] = - 2. * x[3*i] * gamma * s;
+          H[(3 * i + 0) * n + 3 * i + 2] = - factor * 2. * x[3*i] * gamma * s;
 
           H[(3 * i + 1) * n + 3 * i + 0] = 0.;
-          H[(3 * i + 1) * n + 3 * i + 1] = 2 * s;
-          H[(3 * i + 1) * n + 3 * i + 2] = - 2. * x[3*i + 1] * gamma * s;
+          H[(3 * i + 1) * n + 3 * i + 1] = factor * 2 * s;
+          H[(3 * i + 1) * n + 3 * i + 2] = - factor * 2. * x[3*i + 1] * gamma * s;
 
-          H[(3 * i + 2) * n + 3 * i + 0] = - 2. * x[3*i] * gamma * s;
-          H[(3 * i + 2) * n + 3 * i + 1] = - 2. * x[3*i + 1] * gamma * s;
-          H[(3 * i + 2) * n + 3 * i + 2] = gamma * gamma * s * v;
+          H[(3 * i + 2) * n + 3 * i + 0] = - factor * 2. * x[3*i] * gamma * s;
+          H[(3 * i + 2) * n + 3 * i + 1] = - factor * 2. * x[3*i + 1] * gamma * s;
+          H[(3 * i + 2) * n + 3 * i + 2] = factor * gamma * gamma * s * v;
         }
       }
       break;
@@ -246,40 +254,50 @@ double Norm(double* g, double* H, const double* x, const double* params, int n,
 
     case NormType::kSigmoidL2: {
       double gamma = -params[0];
+      double front_factor = params[1];
+      double back_factor = params[2];
+      double factor = front_factor;
+      // Order of the legs based on the residual : FR-FL-RR-RL.
       for (int i = 0; i < 4; i++) {
+        factor = (i < 2) ? front_factor : back_factor;
         double e = mju_exp(-gamma * x[3*i+2]);
         double sig = mju_pow(1 + e, -1);
         double v = x[3*i] * x[3*i] + x[3*i+1] * x[3*i+1];
-        y += sig * v;
+        // Implementation
+        y += factor * sig * v;
       }
 
       if (g) {  // x
         for (int i = 0; i < 4; i++) {
+          factor = (i < 2) ? front_factor : back_factor;
           double e = mju_exp(-gamma * x[3*i+2]);
           double sig = mju_pow(1 + e, -1);
           double v = x[3*i] * x[3*i] + x[3*i+1] * x[3*i+1];
-          g[3*i] = 2*x[3*i] * sig;
-          g[3*i+1] = 2*x[3*i+1] * sig;
-          g[3*i+2] = gamma * e * v * mju_pow(1 + e, -2);
+          // Implementation
+          g[3*i] = factor * 2*x[3*i] * sig;
+          g[3*i+1] = factor * 2*x[3*i+1] * sig;
+          g[3*i+2] = factor * gamma * e * v * mju_pow(1 + e, -2);
         }
       }
       if (H) {  // eye(n)
         for (int i = 0; i < 4; i++) {
+          factor = (i < 2) ? front_factor : back_factor;
           double e = mju_exp(-gamma * x[3*i+2]);
           double sig = mju_pow(1 + e, -1);
           double dsig = gamma * e * mju_pow(1 + e, -2);
           double v = x[3*i] * x[3*i] + x[3*i+1] * x[3*i+1];
-          H[(3 * i + 0) * n + 3 * i + 0] = 2 * sig;
+          // Implementation
+          H[(3 * i + 0) * n + 3 * i + 0] = factor * 2 * sig;
           H[(3 * i + 0) * n + 3 * i + 1] = 0.;
-          H[(3 * i + 0) * n + 3 * i + 2] = 2. * x[3*i] * dsig;
+          H[(3 * i + 0) * n + 3 * i + 2] = factor * 2. * x[3*i] * dsig;
 
           H[(3 * i + 1) * n + 3 * i + 0] = 0.;
-          H[(3 * i + 1) * n + 3 * i + 1] = 2 * sig;
-          H[(3 * i + 1) * n + 3 * i + 2] = 2. * x[3*i + 1] * dsig;
+          H[(3 * i + 1) * n + 3 * i + 1] = factor * 2 * sig;
+          H[(3 * i + 1) * n + 3 * i + 2] = factor * 2. * x[3*i + 1] * dsig;
 
-          H[(3 * i + 2) * n + 3 * i + 0] = 2. * x[3*i] * dsig;
-          H[(3 * i + 2) * n + 3 * i + 1] = 2. * x[3*i + 1] * dsig;
-          H[(3 * i + 2) * n + 3 * i + 2] =  v * (- gamma * dsig + 2 * e * dsig * sig);
+          H[(3 * i + 2) * n + 3 * i + 0] = factor * 2. * x[3*i] * dsig;
+          H[(3 * i + 2) * n + 3 * i + 1] = factor * 2. * x[3*i + 1] * dsig;
+          H[(3 * i + 2) * n + 3 * i + 2] =  factor * v * (- gamma * dsig + 2 * e * dsig * sig);
         }
       }
       break;
