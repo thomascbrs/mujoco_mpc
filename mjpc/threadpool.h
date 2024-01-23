@@ -56,7 +56,7 @@ class ThreadPool {
   // wait for count, then return
   void WaitCount(int value) {
     std::unique_lock<std::mutex> lock(m_);
-    cv_ext_.wait(lock, [&]() { return this->GetCount() >= value; });
+    cv_ext_.wait(lock, [&]() { return static_cast<int>(this->GetCount()) >= value; });
   }
 
  private:
