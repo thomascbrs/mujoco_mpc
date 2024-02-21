@@ -34,7 +34,7 @@ cmake --build . --target libmjpc -j4
 
 - Release mode
 ```
-mkdir build_debug && cd build_debug && cmake -DCMAKE_BUILD_TYPE=Debug -DMJPC_BUILD_GRPC_SERVICE=ON ..
+mkdir build_debug && cd build_debug && cmake -DCMAKE_BUILD_TYPE=Release -DMJPC_BUILD_GRPC_SERVICE=ON ..
 ```
 Modify .c and .cpp compiler to clang12.
 In my case, using ccmake .., then configure, and setting the following variables :
