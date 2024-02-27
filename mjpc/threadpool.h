@@ -37,7 +37,7 @@ class ThreadPool {
   // destructor
   ~ThreadPool();
 
-  int NumThreads() const { return threads_.size(); }
+  virtual int NumThreads() const { return threads_.size(); }
 
   // returns an ID between 0 and NumThreads() - 1. must be called within
   // worker thread (returns -1 if not).
@@ -45,7 +45,7 @@ class ThreadPool {
 
   // ----- methods ----- //
   // set task for threadpool
-  void Schedule(std::function<void()> task);
+  virtual void Schedule(std::function<void()> task);
 
   // return number of tasks completed
   std::uint64_t GetCount() { return ctr_; }
@@ -54,16 +54,21 @@ class ThreadPool {
   void ResetCount() { ctr_ = 0; }
 
   // wait for count, then return
-  void WaitCount(int value) {
+  virtual void WaitCount(int value) {
     std::unique_lock<std::mutex> lock(m_);
     cv_ext_.wait(lock, [&]() { return static_cast<int>(this->GetCount()) >= value; });
   }
 
- private:
+  // Provide a protected setter function for worker_id_
+  static void SetWorkerId(int id) {
+      worker_id_ = id;
+  }
+
+ protected:
   // ----- methods ----- //
 
   // execute task with available thread
-  void WorkerThread(int i);
+  virtual void WorkerThread(int i);
 
   ABSL_CONST_INIT static thread_local int worker_id_;
 
