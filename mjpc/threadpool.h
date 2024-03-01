@@ -37,7 +37,13 @@ class ThreadPool {
   // destructor
   ~ThreadPool();
 
-  virtual int NumThreads() const { return threads_.size(); }
+  virtual int NumThreads() const {
+    if (n_threads_ == 1) {
+      return 1;
+    } else {
+      return threads_.size();
+    }
+  }
 
   // returns an ID between 0 and NumThreads() - 1. must be called within
   // worker thread (returns -1 if not).
@@ -55,8 +61,10 @@ class ThreadPool {
 
   // wait for count, then return
   virtual void WaitCount(int value) {
-    std::unique_lock<std::mutex> lock(m_);
-    cv_ext_.wait(lock, [&]() { return static_cast<int>(this->GetCount()) >= value; });
+    if (n_threads_ != 1){
+      std::unique_lock<std::mutex> lock(m_);
+      cv_ext_.wait(lock, [&]() { return static_cast<int>(this->GetCount()) >= value; });
+    }
   }
 
   // Provide a protected setter function for worker_id_
@@ -79,6 +87,7 @@ class ThreadPool {
   std::condition_variable cv_ext_;
   std::queue<std::function<void()>> queue_;
   std::uint64_t ctr_;
+  int n_threads_;
 };
 
 }  // namespace mjpc

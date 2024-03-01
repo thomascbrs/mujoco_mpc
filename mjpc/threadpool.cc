@@ -28,8 +28,17 @@ ABSL_CONST_INIT thread_local int ThreadPool::worker_id_ = -1;
 
 // ThreadPool constructor
 ThreadPool::ThreadPool(int num_threads) : ctr_(0) {
-  for (int i = 0; i < num_threads; i++) {
-    threads_.push_back(std::thread(&ThreadPool::WorkerThread, this, i));
+  n_threads_ = num_threads;
+  if (n_threads_ <= 0) {
+    throw std::runtime_error("Cannot use <=0 thread. Set num_threads >= 1.");
+  }
+  if (n_threads_ > 1) {
+    for (int i = 0; i < num_threads; i++) {
+      threads_.push_back(std::thread(&ThreadPool::WorkerThread, this, i));
+    }
+  } else {
+    // Dummy behaviour for n_thread = 1.
+    worker_id_ = 0;
   }
 }
 
@@ -49,9 +58,14 @@ ThreadPool::~ThreadPool() {
 
 // ThreadPool scheduler
 void ThreadPool::Schedule(std::function<void()> task) {
-  std::unique_lock<std::mutex> lock(m_);
-  queue_.push(std::move(task));
-  cv_in_.notify_one();
+  if (n_threads_ != 1) {
+    std::unique_lock<std::mutex> lock(m_);
+    queue_.push(std::move(task));
+    cv_in_.notify_one();
+  } else {
+    task();
+    ++ctr_;
+  }
 }
 
 // ThreadPool worker
